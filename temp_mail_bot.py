@@ -4,6 +4,7 @@ import string
 import os
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
+PORT = int(os.getenv("PORT", "8080"))
 
 async def start(update, context):
     await update.message.reply_text("Commands: /gen /custom /list /del")
@@ -42,6 +43,9 @@ async def delete(update, context):
     email = context.user_data['emails'].pop()
     await update.message.reply_text(f"Deleted: {email}")
 
+async def web_app(request):
+    return web.Response(text="Bot is running")
+
 def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -49,8 +53,13 @@ def main():
     app.add_handler(CommandHandler("custom", custom))
     app.add_handler(CommandHandler("list", list_mail))
     app.add_handler(CommandHandler("del", delete))
+    
     print("Starting bot...")
-    app.run_polling()
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://temp-mail-bot.onrender.com"
+    )
 
 if __name__ == "__main__":
     main()
