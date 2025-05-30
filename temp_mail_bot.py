@@ -7,17 +7,80 @@ import os
 
 # Get environment variables
 PORT = int(os.getenv("PORT", "8080"))
-TOKEN = os.getenv("TOKEN", 
-"7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0")
+TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 
 DOMAINS = ['tempmail.com', 'temp-mail.org', 'throwawaymail.com']
 
-# [Keep all your existing functions here]
+async def start_command(update, context):
+    await update.message.reply_text("Commands: /generate /custom /list 
+/delete /clear /history")
+
+def generate_random_string(length=10):
+    letters = string.ascii_lowercase + string.digits
+    return ''.join(random.choice(letters) for _ in range(length))
+
+async def generate_command(update, context):
+    random_name = generate_random_string()
+    domain = random.choice(DOMAINS)
+    email = f"{random_name}@{domain}"
+    if 'emails' not in context.user_data:
+        context.user_data['emails'] = []
+    context.user_data['emails'].append(email)
+    await update.message.reply_text(f"New email: {email}")
+
+async def custom_command(update, context):
+    if not context.args:
+        await update.message.reply_text("Usage: /custom yourprefix")
+        return
+    prefix = context.args[0].lower()
+    domain = random.choice(DOMAINS)
+    email = f"{prefix}{generate_random_string(5)}@{domain}"
+    if 'emails' not in context.user_data:
+        context.user_data['emails'] = []
+    context.user_data['emails'].append(email)
+    await update.message.reply_text(f"Custom email: {email}")
+
+async def list_command(update, context):
+    if 'emails' not in context.user_data or not 
+context.user_data['emails']:
+        await update.message.reply_text("No emails")
+        return
+    message = "Your emails:"
+    for idx, email in enumerate(context.user_data['emails'], 1):
+        message += f"\n{idx}. {email}"
+    await update.message.reply_text(message)
+
+async def delete_command(update, context):
+    if 'emails' not in context.user_data or not 
+context.user_data['emails']:
+        await update.message.reply_text("No emails")
+        return
+    deleted = context.user_data['emails'].pop()
+    await update.message.reply_text(f"Deleted: {deleted}")
+
+async def clear_command(update, context):
+    if 'emails' not in context.user_data:
+        await update.message.reply_text("No emails")
+        return
+    count = len(context.user_data['emails'])
+    context.user_data['emails'] = []
+    await update.message.reply_text(f"Cleared {count} emails")
+
+async def history_command(update, context):
+    await update.message.reply_text("History feature coming soon")
+
+async def check_messages(update, context):
+    if 'emails' not in context.user_data or not 
+context.user_data['emails']:
+        await update.message.reply_text("Generate an email first using 
+/generate")
+        return
+    email = context.user_data['emails'][-1]
+    await update.message.reply_text(f"No messages for {email}")
 
 def main():
     app = Application.builder().token(TOKEN).build()
 
-    # Add handlers
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', start_command))
     app.add_handler(CommandHandler('generate', generate_command))
@@ -29,18 +92,7 @@ def main():
     app.add_handler(CommandHandler('messages', check_messages))
 
     print("✨ Bot is starting...")
-    
-    # Use webhooks in production, polling in development
-    if os.getenv("RENDER"):
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=TOKEN,
-            webhook_url=f"https://{os.getenv('RENDER_EXTERNAL_URL', 
-'example.com')}/{TOKEN}"
-        )
-    else:
-        app.run_polling()
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
