@@ -43,9 +43,6 @@ async def delete(update, context):
     email = context.user_data['emails'].pop()
     await update.message.reply_text(f"Deleted: {email}")
 
-async def web_app(request):
-    return web.Response(text="Bot is running")
-
 def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -58,7 +55,7 @@ def main():
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
-        webhook_url="https://temp-mail-bot.onrender.com"
+        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
     )
 
 if __name__ == "__main__":
