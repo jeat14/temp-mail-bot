@@ -1,19 +1,18 @@
 from telegram.ext import Application, CommandHandler
 import random
 import string
-import re
-from datetime import datetime, timedelta
 import os
 
-# Get environment variables
 PORT = int(os.getenv("PORT", "8080"))
-TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
+TOKEN = os.getenv("TOKEN", 
+"7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0")
 
 DOMAINS = ['tempmail.com', 'temp-mail.org', 'throwawaymail.com']
 
 async def start_command(update, context):
-    await update.message.reply_text("Commands: /generate /custom /list 
-/delete /clear /history")
+    await update.message.reply_text("Available commands: /generate - New 
+email, /custom - Custom email, /list - Show emails, /delete - Remove 
+email")
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -58,26 +57,6 @@ context.user_data['emails']:
     deleted = context.user_data['emails'].pop()
     await update.message.reply_text(f"Deleted: {deleted}")
 
-async def clear_command(update, context):
-    if 'emails' not in context.user_data:
-        await update.message.reply_text("No emails")
-        return
-    count = len(context.user_data['emails'])
-    context.user_data['emails'] = []
-    await update.message.reply_text(f"Cleared {count} emails")
-
-async def history_command(update, context):
-    await update.message.reply_text("History feature coming soon")
-
-async def check_messages(update, context):
-    if 'emails' not in context.user_data or not 
-context.user_data['emails']:
-        await update.message.reply_text("Generate an email first using 
-/generate")
-        return
-    email = context.user_data['emails'][-1]
-    await update.message.reply_text(f"No messages for {email}")
-
 def main():
     app = Application.builder().token(TOKEN).build()
 
@@ -87,13 +66,17 @@ def main():
     app.add_handler(CommandHandler('custom', custom_command))
     app.add_handler(CommandHandler('list', list_command))
     app.add_handler(CommandHandler('delete', delete_command))
-    app.add_handler(CommandHandler('clear', clear_command))
-    app.add_handler(CommandHandler('history', history_command))
-    app.add_handler(CommandHandler('messages', check_messages))
 
-    print("✨ Bot is starting...")
-    app.run_polling()
+    print("Bot starting...")
+    
+    if os.getenv("RENDER"):
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            webhook_url="https://temp-mail-bot.onrender.com"
+        )
+    else:
+        app.run_polling()
 
 if __name__ == '__main__':
     main()
-
