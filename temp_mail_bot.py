@@ -7,8 +7,7 @@ TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 async def start(update, context):
-    await update.message.reply_text("Bot commands: /gen /custom /list 
-/del")
+    await update.message.reply_text("Commands: /gen /custom /list /del")
 
 async def gen(update, context):
     email = f"user{random.randint(1000,9999)}@temp.mail"
@@ -29,8 +28,7 @@ async def custom(update, context):
     await update.message.reply_text(f"New: {email}")
 
 async def list_mail(update, context):
-    if 'emails' not in context.user_data or not 
-context.user_data['emails']:
+    if 'emails' not in context.user_data or not context.user_data['emails']:
         await update.message.reply_text("No emails")
         return
     msg = "Emails:"
@@ -39,8 +37,7 @@ context.user_data['emails']:
     await update.message.reply_text(msg)
 
 async def delete(update, context):
-    if 'emails' not in context.user_data or not 
-context.user_data['emails']:
+    if 'emails' not in context.user_data or not context.user_data['emails']:
         await update.message.reply_text("No emails")
         return
     email = context.user_data['emails'].pop()
@@ -58,4 +55,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
