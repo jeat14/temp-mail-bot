@@ -10,8 +10,8 @@ TOKEN = os.getenv("TOKEN",
 DOMAINS = ['tempmail.com', 'temp-mail.org', 'throwawaymail.com']
 
 async def start_command(update, context):
-    await update.message.reply_text("/generate - New email\n/custom - 
-Custom email\n/list - Show emails\n/delete - Remove email")
+    await update.message.reply_text("Commands: /generate /custom /list 
+/delete")
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -67,7 +67,7 @@ def main():
     app.add_handler(CommandHandler('delete', delete_command))
 
     print("Bot starting...")
-    app.run_polling()
+    app.run_webhook(listen="0.0.0.0", port=PORT)
 
 if __name__ == '__main__':
     main()
