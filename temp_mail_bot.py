@@ -51,7 +51,11 @@ def main():
     app.add_handler(CommandHandler("list", list_mail))
     app.add_handler(CommandHandler("del", delete))
     print("Starting...")
-    app.run_webhook(listen="0.0.0.0", port=PORT)
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://temp-mail-bot.onrender.com"
+    )
 
 if __name__ == "__main__":
     main()
