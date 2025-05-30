@@ -9,4 +9,4 @@ COPY . .
 
 ENV PORT=8080
 
-CMD ["python", "temp_mail_bot.py"]
+CMD ["python3", "temp_mail_bot.py"]
