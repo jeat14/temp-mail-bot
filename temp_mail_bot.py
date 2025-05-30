@@ -3,94 +3,59 @@ import random
 import string
 import os
 
-# Load environment variables
+TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
-TOKEN = os.getenv("TOKEN", "your-telegram-bot-token")  # Replace with your 
-actual token
-APP_URL = os.getenv("APP_URL", "https://your-app-name.onrender.com")  # 
-Replace with your Render URL
 
-# Temp mail domains
-DOMAINS = ['tempmail.com', 'temp-mail.org', 'throwawaymail.com']
+async def start(update, context):
+    await update.message.reply_text("Bot commands: /gen /custom /list 
+/del")
 
-# /start and /help handler
-async def start_command(update, context):
-    await update.message.reply_text(
-        "Commands:\n"
-        "/generate - Generate a random email\n"
-        "/custom <prefix> - Create a custom email\n"
-        "/list - List your generated emails\n"
-        "/delete - Delete your last email"
-    )
-
-# Utility: generate random string
-def generate_random_string(length=10):
-    letters = string.ascii_lowercase + string.digits
-    return ''.join(random.choice(letters) for _ in range(length))
-
-# /generate command
-async def generate_command(update, context):
-    random_name = generate_random_string()
-    domain = random.choice(DOMAINS)
-    email = f"{random_name}@{domain}"
+async def gen(update, context):
+    email = f"user{random.randint(1000,9999)}@temp.mail"
     if 'emails' not in context.user_data:
         context.user_data['emails'] = []
     context.user_data['emails'].append(email)
-    await update.message.reply_text(f"New email: {email}")
+    await update.message.reply_text(f"New: {email}")
 
-# /custom command
-async def custom_command(update, context):
+async def custom(update, context):
     if not context.args:
-        await update.message.reply_text("Usage: /custom <yourprefix>")
+        await update.message.reply_text("Use: /custom yourname")
         return
-    prefix = context.args[0].lower()
-    domain = random.choice(DOMAINS)
-    email = f"{prefix}{generate_random_string(5)}@{domain}"
+    prefix = context.args[0]
+    email = f"{prefix}{random.randint(100,999)}@temp.mail"
     if 'emails' not in context.user_data:
         context.user_data['emails'] = []
     context.user_data['emails'].append(email)
-    await update.message.reply_text(f"Custom email: {email}")
+    await update.message.reply_text(f"New: {email}")
 
-# /list command
-async def list_command(update, context):
+async def list_mail(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("No emails yet.")
+        await update.message.reply_text("No emails")
         return
-    message = "Your emails:"
-    for idx, email in enumerate(context.user_data['emails'], 1):
-        message += f"\n{idx}. {email}"
-    await update.message.reply_text(message)
+    msg = "Emails:"
+    for i, email in enumerate(context.user_data['emails'], 1):
+        msg += f"\n{i}. {email}"
+    await update.message.reply_text(msg)
 
-# /delete command
-async def delete_command(update, context):
+async def delete(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("No emails to delete.")
+        await update.message.reply_text("No emails")
         return
-    deleted = context.user_data['emails'].pop()
-    await update.message.reply_text(f"Deleted: {deleted}")
+    email = context.user_data['emails'].pop()
+    await update.message.reply_text(f"Deleted: {email}")
 
-# Main bot setup
 def main():
     app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("gen", gen))
+    app.add_handler(CommandHandler("custom", custom))
+    app.add_handler(CommandHandler("list", list_mail))
+    app.add_handler(CommandHandler("del", delete))
+    print("Starting...")
+    app.run_webhook(listen="0.0.0.0", port=PORT)
 
-    # Command handlers
-    app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler('help', start_command))
-    app.add_handler(CommandHandler('generate', generate_command))
-    app.add_handler(CommandHandler('custom', custom_command))
-    app.add_handler(CommandHandler('list', list_command))
-    app.add_handler(CommandHandler('delete', delete_command))
-
-    print("Bot starting...")
-
-    # Start webhook for Render
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url=f"{APP_URL}/{TOKEN}"
-    )
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
+
