@@ -9,16 +9,14 @@ TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
-EMAIL_LIFETIME = 10  # 10 minutes
+EMAIL_LIFETIME = 10
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
 
 async def start(update, context):
-    await update.message.reply_text("Welcome! Use these commands:\n/gen - 
-New email\n/check - Check messages\n/list - Show emails\n/time - Check 
-time left")
+    await update.message.reply_text("Commands: /gen /check /list /time")
 
 async def generate_email(update, context):
     try:
@@ -38,18 +36,16 @@ async def generate_email(update, context):
         }
         
         context.user_data['emails'].append(email_data)
-        await update.message.reply_text(f"New email: {email}\nExpires in: 
-{EMAIL_LIFETIME} minutes")
+        await update.message.reply_text(f"New email: {email}")
         
     except Exception as e:
         print(f"Debug - Error: {str(e)}")
-        await update.message.reply_text("Error generating email")
+        await update.message.reply_text("Error")
 
 async def list_emails(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("No emails yet. Use /gen to create 
-one.")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -57,25 +53,22 @@ one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("No active emails. Use /gen to 
-create one.")
+        await update.message.reply_text("No active emails")
         return
     
-    msg = "Your active emails:\n"
+    msg = "Your emails:"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
         minutes = int(remaining.total_seconds() / 60)
-        seconds = int(remaining.total_seconds() % 60)
         msg += f"\n{i}. {email['address']}"
-        msg += f"\nTime left: {minutes}m {seconds}s\n"
+        msg += f"\nTime: {minutes}m"
     
     await update.message.reply_text(msg)
 
 async def check_messages(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("No emails yet. Use /gen to create 
-one.")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -83,8 +76,7 @@ one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("All emails expired. Use /gen to 
-create new one.")
+        await update.message.reply_text("No active emails")
         return
     
     email = active_emails[-1]
@@ -100,15 +92,11 @@ f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={doma
             messages = response.json()
             
             if not messages:
-                remaining = email['expires'] - now
-                minutes = int(remaining.total_seconds() / 60)
-                seconds = int(remaining.total_seconds() % 60)
-                msg = f"No messages for {email['address']}\n"
-                msg += f"Time left: {minutes}m {seconds}s"
-                await update.message.reply_text(msg)
+                await update.message.reply_text(f"No messages for 
+{email['address']}")
                 return
             
-            msg = f"Inbox for {email['address']}:\n"
+            msg = f"Messages for {email['address']}:"
             for i, message in enumerate(messages, 1):
                 msg_id = message['id']
                 content_url = 
@@ -117,16 +105,10 @@ f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={doma
                 
                 if content_response.status_code == 200:
                     content = content_response.json()
-                    msg += f"\nMessage {i}:"
+                    msg += f"\n\nMessage {i}:"
                     msg += f"\nFrom: {content.get('from', 'Unknown')}"
                     msg += f"\nSubject: {content.get('subject', 'No 
 subject')}"
-                    msg += f"\nDate: {content.get('date', 'Unknown')}"
-                    if content.get('textBody'):
-                        body = content['textBody'].replace('\r', 
-'').replace('\n', ' ')[:200]
-                        msg += f"\nBody: {body}..."
-                    msg += "\n"
             
             await update.message.reply_text(msg)
         else:
@@ -134,13 +116,12 @@ subject')}"
             
     except Exception as e:
         print(f"Debug error: {str(e)}")
-        await update.message.reply_text("Error checking messages")
+        await update.message.reply_text("Error")
 
 async def check_time(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("No emails yet. Use /gen to create 
-one.")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -148,17 +129,14 @@ one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("All emails expired. Use /gen to 
-create new one.")
+        await update.message.reply_text("No active emails")
         return
     
-    msg = "Time remaining:\n"
+    msg = "Time remaining:"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
         minutes = int(remaining.total_seconds() / 60)
-        seconds = int(remaining.total_seconds() % 60)
-        msg += f"\n{i}. {email['address']}"
-        msg += f"\nTime left: {minutes}m {seconds}s\n"
+        msg += f"\n{i}. {email['address']}: {minutes}m"
     
     await update.message.reply_text(msg)
 
@@ -171,7 +149,7 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
-    print("Bot starting...")
+    print("Starting...")
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
