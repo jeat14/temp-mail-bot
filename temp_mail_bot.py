@@ -16,12 +16,8 @@ async def gen(update, context):
     email = f"user{random.randint(1000,9999)}@{random.choice(DOMAINS)}"
     if "emails" not in context.user_data:
         context.user_data["emails"] = []
-    
-    email_data = {
-        "address": email,
-        "expires": datetime.now() + timedelta(minutes=EXPIRATION_MINUTES),
-        "messages": []
-    }
+    email_data = {"address": email, "expires": datetime.now() + 
+timedelta(minutes=EXPIRATION_MINUTES), "messages": []}
     context.user_data["emails"].append(email_data)
     await update.message.reply_text(f"New email: {email}")
 
@@ -29,79 +25,61 @@ async def list_mail(update, context):
     if "emails" not in context.user_data:
         await update.message.reply_text("No emails")
         return
-    
     now = datetime.now()
     active_emails = [e for e in context.user_data["emails"] if 
 e["expires"] > now]
-    
     if not active_emails:
         await update.message.reply_text("No active emails")
         return
-    
-    msg = "Your active emails:\n\n"
+    msg = "Your active emails:"
     for i, email in enumerate(active_emails, 1):
         remaining = email["expires"] - now
         minutes = int(remaining.total_seconds() / 60)
-        msg += f"{i}. {email['address']}\n"
-        msg += f"Time left: {minutes}m\n"
-        msg += f"Messages: {len(email['messages'])}\n\n"
-    
+        msg += f"\n{i}. {email['address']} ({minutes}m left)"
     await update.message.reply_text(msg)
 
 async def time_command(update, context):
     if "emails" not in context.user_data:
         await update.message.reply_text("No emails")
         return
-    
     now = datetime.now()
     active_emails = [e for e in context.user_data["emails"] if 
 e["expires"] > now]
-    
     if not active_emails:
         await update.message.reply_text("All emails expired")
         return
-    
     email = active_emails[-1]
     remaining = email["expires"] - now
     minutes = int(remaining.total_seconds() / 60)
-    await update.message.reply_text(f"Latest email: 
-{email['address']}\nTime left: {minutes}m")
+    await update.message.reply_text(f"Time left for {email['address']}: 
+{minutes}m")
 
 async def check_messages(update, context):
     if "emails" not in context.user_data:
         await update.message.reply_text("No emails")
         return
-    
     now = datetime.now()
     active_emails = [e for e in context.user_data["emails"] if 
 e["expires"] > now]
-    
     if not active_emails:
         await update.message.reply_text("All emails expired")
         return
-    
     email = active_emails[-1]
-    
     if random.random() < 0.3:
         new_message = {
             "from": f"user{random.randint(1000,9999)}@example.com",
-            "subject": f"Message #{len(email['messages']) + 1}",
-            "body": f"This is test message #{len(email['messages']) + 1}",
+            "subject": f"Test #{len(email['messages']) + 1}",
             "time": datetime.now().strftime("%H:%M:%S")
         }
         email["messages"].append(new_message)
-    
     if not email["messages"]:
         await update.message.reply_text(f"No messages for 
 {email['address']}")
     else:
-        msg = f"Inbox for {email['address']}:\n\n"
+        msg = f"Messages for {email['address']}:"
         for i, message in enumerate(email["messages"], 1):
-            msg += f"Message #{i}\n"
-            msg += f"From: {message['from']}\n"
-            msg += f"Subject: {message['subject']}\n"
-            msg += f"Time: {message['time']}\n"
-            msg += f"Body: {message['body']}\n\n"
+            msg += f"\n{i}. From: {message['from']} | Subject: 
+{message['subject']} | Time: {message['time']}"
         await update.message.reply_text(msg)
 
 def main():
