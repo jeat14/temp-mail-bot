@@ -1,23 +1,12 @@
 from telegram.ext import Application, CommandHandler
 import random
-import os
 import string
 from datetime import datetime
 import requests
-import asyncio
-from aiohttp import web
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
-PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
-
-# Create web app
-routes = web.RouteTableDef()
-
-@routes.get('/')
-async def health_check(request):
-    return web.Response(text="Bot is alive!", status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -106,7 +95,7 @@ async def check_messages(update, context):
         print(f"Debug error: {str(e)}")
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
-async def run_bot():
+def main():
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -114,29 +103,8 @@ async def run_bot():
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    await app.initialize()
-    await app.start()
-    
-    print("Bot started...")
-    
-    # Keep the bot running
-    while True:
-        await asyncio.sleep(1)
-
-async def run_webapp():
-    app = web.Application()
-    app.add_routes(routes)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-    print("Web app started...")
-
-def main():
-    loop = asyncio.get_event_loop()
-    loop.create_task(run_bot())
-    loop.create_task(run_webapp())
-    loop.run_forever()
+    print("Bot starting...")
+    app.run_polling(poll_interval=1)
 
 if __name__ == "__main__":
     main()
