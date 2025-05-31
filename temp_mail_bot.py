@@ -12,7 +12,6 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
-# Web routes
 routes = web.RouteTableDef()
 
 @routes.get('/')
@@ -61,40 +60,44 @@ async def list_emails(update, context):
     await update.message.reply_text(msg)
 
 async def check_messages(update, context):
-    if not context.user_data.get('emails'):
-        await update.message.reply_text("No emails")
-        return
-    now = datetime.now()
-    active_emails = []
-    for email in context.user_data['emails']:
-        if email['expires'] > now:
-            active_emails.append(email)
-    if not active_emails:
-        await update.message.reply_text("No active emails")
-        return
-    email = active_emails[-1]
-    login = email['login']
-    domain = email['domain']
-    url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        messages = response.json()
-        if not messages:
-            await update.message.reply_text(f"No messages for {email['address']}")
+    try:
+        if not context.user_data.get('emails'):
+            await update.message.reply_text("No emails")
             return
+
+        now = datetime.now()
+        active_emails = [e for e in context.user_data['emails'] if e['expires'] > now]
+        
+        if not active_emails:
+            await update.message.reply_text("No active emails")
+            return
+            
+        email = active_emails[-1]
+        await update.message.reply_text(f"Checking {email['address']}...")
+        
+        # Get messages
+        url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={email['login']}&domain={email['domain']}"
+        messages = requests.get(url).json()
+        
+        if not messages:
+            await update.message.reply_text(f"No messages found for {email['address']}")
+            return
+            
+        # Get message details
         msg = f"Messages for {email['address']}:"
         for i, message in enumerate(messages, 1):
             msg_id = message['id']
-            content_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}"
-            content_response = requests.get(content_url)
-            if content_response.status_code == 200:
-                content = content_response.json()
-                msg += f"\n\nMessage {i}:"
-                msg += f"\nFrom: {content.get('from', 'Unknown')}"
-                msg += f"\nSubject: {content.get('subject', 'No subject')}"
+            msg_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={email['login']}&domain={email['domain']}&id={msg_id}"
+            content = requests.get(msg_url).json()
+            msg += f"\n\nMessage {i}:"
+            msg += f"\nFrom: {content.get('from', 'Unknown')}"
+            msg += f"\nSubject: {content.get('subject', 'No subject')}"
+            
         await update.message.reply_text(msg)
-    else:
-        await update.message.reply_text("Error checking messages")
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        await update.message.reply_text(f"No messages found for {email['address']}")
 
 async def check_time(update, context):
     if not context.user_data.get('emails'):
