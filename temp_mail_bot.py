@@ -2,99 +2,132 @@ from telegram.ext import Application, CommandHandler
 import random
 import os
 from datetime import datetime, timedelta
+import requests
+import json
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 async def start(update, context):
-    await update.message.reply_text("Commands: /gen /list /time /check")
+    await update.message.reply_text(
+        "📧 TempMail Bot\n\n"
+        "/gen1 - Generate 1secmail\n"
+        "/gen2 - Generate temp-mail\n"
+        "/check - Check messages\n"
+        "/list - Show active emails"
+    )
 
-async def gen(update, context):
-    num = random.randint(1000,9999)
-    email = "user" + str(num) + "@tempmail.com"
-    if "emails" not in context.user_data:
-        context.user_data["emails"] = []
-    data = {"address": email, "expires": datetime.now() + timedelta(minutes=10), "messages": []}
-    context.user_data["emails"].append(data)
-    await update.message.reply_text("New email created: " + email)
+async def gen_1secmail(update, context):
+    try:
+        response = requests.get('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1')
+        email = response.json()[0]
+        
+        if 'emails' not in context.user_data:
+            context.user_data['emails'] = []
+            
+        email_data = {
+            'address': email,
+            'service': '1secmail',
+            'created': datetime.now(),
+            'login': email.split('@')[0],
+            'domain': email.split('@')[1]
+        }
+        
+        context.user_data['emails'].append(email_data)
+        await update.message.reply_text(f"✨ New 1secmail email:\n📧 {email}")
+        
+    except Exception as e:
+        await update.message.reply_text(f"Error generating email: {str(e)}")
+
+async def gen_tempmail(update, context):
+    try:
+        # Using 1secmail as backup since temp-mail.org requires API key
+        response = requests.get('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1')
+        email = response.json()[0]
+        
+        if 'emails' not in context.user_data:
+            context.user_data['emails'] = []
+            
+        email_data = {
+            'address': email,
+            'service': 'tempmail',
+            'created': datetime.now(),
+            'login': email.split('@')[0],
+            'domain': email.split('@')[1]
+        }
+        
+        context.user_data['emails'].append(email_data)
+        await update.message.reply_text(f"✨ New temp-mail email:\n📧 {email}")
+        
+    except Exception as e:
+        await update.message.reply_text(f"Error generating email: {str(e)}")
 
 async def list_mail(update, context):
-    if "emails" not in context.user_data:
-        await update.message.reply_text("No emails")
+    if 'emails' not in context.user_data or not context.user_data['emails']:
+        await update.message.reply_text("📭 No active emails")
         return
-    now = datetime.now()
-    active = []
-    for e in context.user_data["emails"]:
-        if e["expires"] > now:
-            active.append(e)
-    if not active:
-        await update.message.reply_text("No active emails")
-        return
-    text = "Your active emails:"
-    for i in range(len(active)):
-        remaining = active[i]["expires"] - now
-        minutes = int(remaining.total_seconds() / 60)
-        text = text + "\n" + str(i+1) + ". " + active[i]["address"] + " (" + str(minutes) + " min left)"
-    await update.message.reply_text(text)
-
-async def time_command(update, context):
-    if "emails" not in context.user_data:
-        await update.message.reply_text("No emails")
-        return
-    now = datetime.now()
-    active = []
-    for e in context.user_data["emails"]:
-        if e["expires"] > now:
-            active.append(e)
-    if not active:
-        await update.message.reply_text("All emails expired")
-        return
-    email = active[-1]
-    remaining = email["expires"] - now
-    minutes = int(remaining.total_seconds() / 60)
-    await update.message.reply_text("Email: " + email["address"] + "\nTime left: " + str(minutes) + " minutes")
+        
+    msg = "📧 Your active emails:\n\n"
+    for idx, email in enumerate(context.user_data['emails'], 1):
+        msg += f"{idx}. {email['address']}\n"
+        msg += f"   Service: {email['service']}\n"
+        msg += f"   Created: {email['created'].strftime('%H:%M:%S')}\n\n"
+    
+    await update.message.reply_text(msg)
 
 async def check_messages(update, context):
-    if "emails" not in context.user_data:
-        await update.message.reply_text("No emails")
+    if 'emails' not in context.user_data or not context.user_data['emails']:
+        await update.message.reply_text("📭 Generate an email first using /gen1 or /gen2")
         return
-    now = datetime.now()
-    active = []
-    for e in context.user_data["emails"]:
-        if e["expires"] > now:
-            active.append(e)
-    if not active:
-        await update.message.reply_text("All emails expired")
-        return
-    email = active[-1]
-    if random.random() < 0.3:
-        num = random.randint(1000,9999)
-        time_str = datetime.now().strftime("%H:%M:%S")
-        msg = {
-            "from": "sender" + str(num) + "@example.com",
-            "subject": "Test message " + str(len(email["messages"]) + 1),
-            "time": time_str
-        }
-        email["messages"].append(msg)
-    if not email["messages"]:
-        await update.message.reply_text("No messages for: " + email["address"])
-    else:
-        text = "Inbox for: " + email["address"]
-        for i in range(len(email["messages"])):
-            msg = email["messages"][i]
-            text = text + "\n\n" + str(i+1) + ". From: " + msg["from"]
-            text = text + "\nSubject: " + msg["subject"]
-            text = text + "\nTime: " + msg["time"]
-        await update.message.reply_text(text)
+        
+    email = context.user_data['emails'][-1]
+    
+    try:
+        if email['service'] == '1secmail':
+            # Check 1secmail messages
+            url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={email['login']}&domain={email['domain']}"
+            response = requests.get(url)
+            messages = response.json()
+            
+            if not messages:
+                await update.message.reply_text(f"📭 No messages for {email['address']}")
+                return
+                
+            msg = f"📬 Inbox for {email['address']}:\n\n"
+            for idx, message in enumerate(messages, 1):
+                # Get message content
+                msg_id = message['id']
+                msg_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={email['login']}&domain={email['domain']}&id={msg_id}"
+                msg_response = requests.get(msg_url)
+                msg_content = msg_response.json()
+                
+                msg += f"📧 Message #{idx}\n"
+                msg += f"From: {message['from']}\n"
+                msg += f"Subject: {message['subject']}\n"
+                msg += f"Date: {message['date']}\n"
+                if msg_content.get('textBody'):
+                    msg += f"Body: {msg_content['textBody'][:200]}...\n\n"
+                    
+        else:
+            # Temp-mail.org would go here if we had API key
+            await update.message.reply_text("Using 1secmail service for now")
+            return
+            
+        await update.message.reply_text(msg)
+        
+    except Exception as e:
+        await update.message.reply_text(f"Error checking messages: {str(e)}")
 
 def main():
     app = Application.builder().token(TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("gen", gen))
+    app.add_handler(CommandHandler("gen1", gen_1secmail))
+    app.add_handler(CommandHandler("gen2", gen_tempmail))
     app.add_handler(CommandHandler("list", list_mail))
-    app.add_handler(CommandHandler("time", time_command))
     app.add_handler(CommandHandler("check", check_messages))
-    print("Starting...")
+    
+    print("✨ Bot is starting...")
     app.run_webhook(listen="0.0.0.0", port=PORT, webhook_url="https://temp-mail-bot-j4bi.onrender.com")
 
 if __name__ == "__main__":
