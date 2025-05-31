@@ -4,20 +4,12 @@ import string
 from datetime import datetime, timedelta
 import requests
 import os
-from aiohttp import web
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME_DAYS = 2  # Emails last for 2 days
-
-# Create web app
-routes = web.RouteTableDef()
-
-@routes.get('/')
-async def handle_root(request):
-    return web.Response(text="Bot is running!", status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -202,10 +194,8 @@ async def check_time(update, context):
     await update.message.reply_text(msg, parse_mode='Markdown')
 
 def main():
-    # Create bot application
     app = Application.builder().token(TOKEN).build()
     
-    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("cmds", cmds))
     app.add_handler(CommandHandler("gen", generate_email))
@@ -213,12 +203,12 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
-    # Create web application
-    web_app = web.Application()
-    web_app.router.add_get('/', handle_root)
-    
-    print("Starting bot...")
-    web.run_app(web_app, host='0.0.0.0', port=PORT)
+    print("Bot starting...")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
+    )
 
 if __name__ == "__main__":
     main()
