@@ -11,6 +11,17 @@ PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 
+# Web routes
+routes = web.RouteTableDef()
+
+@routes.get('/')
+async def handle_root(request):
+    return web.Response(text="Temp Mail Bot is running!")
+
+@routes.post('/' + TOKEN)
+async def handle_webhook(request):
+    return web.Response(status=200)
+
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
@@ -98,23 +109,31 @@ async def check_messages(update, context):
         print(f"Debug error: {str(e)}")
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
-async def web_app(request):
-    return web.Response(text="Temp Mail Bot is running!")
+async def on_startup(app):
+    print("Bot starting...")
+    # Set webhook
+    webhook_url = "https://temp-mail-bot-j4bi.onrender.com/" + TOKEN
+    await app.bot.set_webhook(webhook_url)
 
 def main():
+    # Create web application
+    web_app = web.Application()
+    web_app.add_routes(routes)
+    
+    # Create bot application
     app = Application.builder().token(TOKEN).build()
     
+    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gen", generate_email))
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    print("Bot starting...")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
-    )
+    # Setup webhook
+    web_app.on_startup.append(lambda x: on_startup(app))
+    
+    # Start web application
+    web.run_app(web_app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     main()
