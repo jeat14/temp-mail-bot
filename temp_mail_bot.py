@@ -1,4 +1,3 @@
-cat << 'EOF' > temp_mail_bot.py
 from telegram.ext import Application, CommandHandler
 import random
 import os
@@ -10,19 +9,14 @@ from aiohttp import web
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
-DOMAINS = [
-    "1secmail.com",
-    "1secmail.org",
-    "1secmail.net"
-]
+DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
 
 async def start(update, context):
-    await update.message.reply_text("Commands:\n/gen - Generate new 
-email\n/check - Check messages\n/list - Show emails")
+    await update.message.reply_text("Commands: /gen - New email, /check - Check messages, /list - Show emails")
 
 async def generate_email(update, context):
     try:
@@ -41,36 +35,28 @@ async def generate_email(update, context):
         }
         
         context.user_data['emails'].append(email_data)
-        
-        response = f"📧 New email created!\n\nEmail: {email}\n\nUse /check 
-to see messages"
-        await update.message.reply_text(response)
+        await update.message.reply_text(f"New email: {email}")
         
     except Exception as e:
         print(f"Debug - Error: {str(e)}")
-        await update.message.reply_text("Error generating email. Please 
-try again.")
+        await update.message.reply_text("Error generating email. Please try again.")
 
 async def list_emails(update, context):
-    if 'emails' not in context.user_data or not 
-context.user_data['emails']:
-        await update.message.reply_text("No emails yet. Use /gen to create 
-one.")
+    if 'emails' not in context.user_data or not context.user_data['emails']:
+        await update.message.reply_text("No emails yet. Use /gen to create one.")
         return
     
-    msg = "📧 Your active emails:\n\n"
+    msg = "Your emails:"
     for i, email in enumerate(context.user_data['emails'], 1):
         created_time = email['created'].strftime("%H:%M:%S")
-        msg += f"{i}. {email['address']}\n"
-        msg += f"   Created at: {created_time}\n\n"
+        msg += f"\n{i}. {email['address']}"
+        msg += f"\nCreated: {created_time}\n"
     
     await update.message.reply_text(msg)
 
 async def check_messages(update, context):
-    if 'emails' not in context.user_data or not 
-context.user_data['emails']:
-        await update.message.reply_text("No emails yet. Use /gen to create 
-one.")
+    if 'emails' not in context.user_data or not context.user_data['emails']:
+        await update.message.reply_text("No emails yet. Use /gen to create one.")
         return
     
     email = context.user_data['emails'][-1]
@@ -78,36 +64,31 @@ one.")
     domain = email['domain']
     
     try:
-        url = 
-f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
+        url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
         response = requests.get(url)
         
         if response.status_code == 200:
             messages = response.json()
             
             if not messages:
-                await update.message.reply_text(f"📭 No messages yet for 
-{email['address']}")
+                await update.message.reply_text(f"No messages for {email['address']}")
                 return
             
-            msg = f"📬 Inbox for {email['address']}:\n\n"
+            msg = f"Inbox for {email['address']}:"
             for i, message in enumerate(messages, 1):
                 msg_id = message['id']
-                content_url = 
-f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}"
+                content_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}"
                 content_response = requests.get(content_url)
                 
                 if content_response.status_code == 200:
                     content = content_response.json()
-                    msg += f"📧 Message {i}:\n"
-                    msg += f"From: {content.get('from', 'Unknown')}\n"
-                    msg += f"Subject: {content.get('subject', 'No 
-subject')}\n"
-                    msg += f"Date: {content.get('date', 'Unknown')}\n"
+                    msg += f"\n\nMessage {i}:"
+                    msg += f"\nFrom: {content.get('from', 'Unknown')}"
+                    msg += f"\nSubject: {content.get('subject', 'No subject')}"
+                    msg += f"\nDate: {content.get('date', 'Unknown')}"
                     if content.get('textBody'):
-                        body = content['textBody'].replace('\r', 
-'').replace('\n', ' ')[:200]
-                        msg += f"Body: {body}...\n\n"
+                        body = content['textBody'].replace('\r', '').replace('\n', ' ')[:200]
+                        msg += f"\nBody: {body}..."
             
             await update.message.reply_text(msg)
         else:
@@ -115,8 +96,7 @@ subject')}\n"
             
     except Exception as e:
         print(f"Debug error: {str(e)}")
-        await update.message.reply_text(f"📭 No messages yet for 
-{email['address']}")
+        await update.message.reply_text(f"No messages yet for {email['address']}")
 
 async def web_handler(request):
     return web.Response(text="Temp Mail Bot is running!")
@@ -129,7 +109,6 @@ def main():
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    # Create web app
     web_app = web.Application()
     web_app.router.add_get('/', web_handler)
     
@@ -143,5 +122,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
