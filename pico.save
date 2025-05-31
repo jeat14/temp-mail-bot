@@ -1,0 +1,37 @@
+async def check_messages(update, context):
+    if "emails" not in context.user_data:
+        await update.message.reply_text("No emails")
+        return
+    
+    now = datetime.now()
+    active_emails = [e for e in context.user_data["emails"] if 
+e["expires"] > now]
+    
+    if not active_emails:
+        await update.message.reply_text("All emails expired")
+        return
+    
+    email = active_emails[-1]
+    
+    if random.random() < 0.3:  # 30% chance of new message
+        new_message = {
+            "from": f"user{random.randint(1000,9999)}@example.com",
+            "subject": f"Message #{len(email['messages']) + 1}",
+            "body": f"This is test message #{len(email['messages']) + 1}",
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
+        email["messages"].append(new_message)
+    
+    if not email["messages"]:
+        await update.message.reply_text(f"📥 No messages for 
+{email['address']}")
+    else:
+        msg = f"📬 Inbox for: {email['address']}\n\n"
+        for i, message in enumerate(email["messages"], 1):
+            msg += f"📧 Message #{i}\n"
+            msg += f"From: {message['from']}\n"
+            msg += f"Subject: {message['subject']}\n"
+            msg += f"Time: {message['time']}\n"
+            msg += f"Body: {message['body']}\n\n"
+        await update.message.reply_text(msg)
+
