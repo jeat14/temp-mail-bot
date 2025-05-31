@@ -10,8 +10,7 @@ DOMAINS = ["tempmail.com", "throwaway.com", "quickmail.org"]
 EXPIRATION_MINUTES = 10
 
 async def start(update, context):
-    await update.message.reply_text("📧 TempMail Bot Commands:\n/gen - New 
-email\n/list - Show emails\n/time - Check time\n/check - Check messages")
+    await update.message.reply_text("Commands: /gen /list /time /check")
 
 async def gen(update, context):
     email = f"user{random.randint(1000,9999)}@{random.choice(DOMAINS)}"
@@ -24,12 +23,11 @@ async def gen(update, context):
         "messages": []
     }
     context.user_data["emails"].append(email_data)
-    await update.message.reply_text(f"✨ New email created:\n📧 
-{email}\n⏱ Expires in {EXPIRATION_MINUTES} minutes")
+    await update.message.reply_text(f"New email: {email}")
 
 async def list_mail(update, context):
     if "emails" not in context.user_data:
-        await update.message.reply_text("📭 No emails")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -37,22 +35,22 @@ async def list_mail(update, context):
 e["expires"] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 No active emails")
+        await update.message.reply_text("No active emails")
         return
     
-    msg = "📧 Your active emails:\n\n"
+    msg = "Your active emails:\n\n"
     for i, email in enumerate(active_emails, 1):
         remaining = email["expires"] - now
         minutes = int(remaining.total_seconds() / 60)
         msg += f"{i}. {email['address']}\n"
-        msg += f"⏱ Time left: {minutes}m\n"
-        msg += f"📥 Messages: {len(email['messages'])}\n\n"
+        msg += f"Time left: {minutes}m\n"
+        msg += f"Messages: {len(email['messages'])}\n\n"
     
     await update.message.reply_text(msg)
 
 async def time_command(update, context):
     if "emails" not in context.user_data:
-        await update.message.reply_text("📭 No emails")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -60,18 +58,18 @@ async def time_command(update, context):
 e["expires"] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 All emails expired")
+        await update.message.reply_text("All emails expired")
         return
     
     email = active_emails[-1]
     remaining = email["expires"] - now
     minutes = int(remaining.total_seconds() / 60)
-    await update.message.reply_text(f"⏱ Latest email: 
-{email['address']}\nTime left: {minutes} minutes")
+    await update.message.reply_text(f"Latest email: 
+{email['address']}\nTime left: {minutes}m")
 
 async def check_messages(update, context):
     if "emails" not in context.user_data:
-        await update.message.reply_text("📭 No emails")
+        await update.message.reply_text("No emails")
         return
     
     now = datetime.now()
@@ -79,12 +77,12 @@ async def check_messages(update, context):
 e["expires"] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 All emails expired")
+        await update.message.reply_text("All emails expired")
         return
     
     email = active_emails[-1]
     
-    if random.random() < 0.3:  # 30% chance of new message
+    if random.random() < 0.3:
         new_message = {
             "from": f"user{random.randint(1000,9999)}@example.com",
             "subject": f"Message #{len(email['messages']) + 1}",
@@ -94,12 +92,12 @@ e["expires"] > now]
         email["messages"].append(new_message)
     
     if not email["messages"]:
-        await update.message.reply_text(f"📥 No messages for 
+        await update.message.reply_text(f"No messages for 
 {email['address']}")
     else:
-        msg = f"📬 Inbox for: {email['address']}\n\n"
+        msg = f"Inbox for {email['address']}:\n\n"
         for i, message in enumerate(email["messages"], 1):
-            msg += f"📧 Message #{i}\n"
+            msg += f"Message #{i}\n"
             msg += f"From: {message['from']}\n"
             msg += f"Subject: {message['subject']}\n"
             msg += f"Time: {message['time']}\n"
@@ -113,7 +111,7 @@ def main():
     app.add_handler(CommandHandler("list", list_mail))
     app.add_handler(CommandHandler("time", time_command))
     app.add_handler(CommandHandler("check", check_messages))
-    print("✨ Bot is starting...")
+    print("Bot starting...")
     app.run_webhook(listen="0.0.0.0", port=PORT, 
 webhook_url="https://temp-mail-bot-j4bi.onrender.com")
 
