@@ -4,25 +4,12 @@ import string
 from datetime import datetime, timedelta
 import requests
 import os
-from aiohttp import web
-import asyncio
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME_DAYS = 2
-
-# Web routes
-routes = web.RouteTableDef()
-
-@routes.get('/')
-async def handle_root(request):
-    return web.Response(text="Bot is running!", status=200)
-
-@routes.post('/' + TOKEN)
-async def handle_webhook(request):
-    return web.Response(status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -44,8 +31,6 @@ async def start(update, context):
 2. Send emails to your temporary address
 3. Use /check to see received messages
 4. Email expires in 2 days
-
-⏰ Messages are checked every 10 minutes automatically.
 """
     await update.message.reply_text(welcome_msg, parse_mode='Markdown')
 
@@ -61,7 +46,6 @@ async def cmds(update, context):
 /time - Check remaining time
 
 ⏰ Emails last for 2 days
-📬 Messages checked every 10 minutes
 """
     await update.message.reply_text(commands, parse_mode='Markdown')
 
@@ -89,7 +73,6 @@ async def generate_email(update, context):
 
 📧 Email: `{email}`
 ⏱ Expires in: {EMAIL_LIFETIME_DAYS} days
-📥 Messages checked every 10 minutes
 
 Use /check to see messages
 Use /time to check expiration
@@ -206,7 +189,7 @@ async def check_time(update, context):
     
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-async def run_bot():
+def main():
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -216,37 +199,12 @@ async def run_bot():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
-    await app.initialize()
-    await app.start()
-    
-    webhook_url = f"https://temp-mail-bot-j4bi.onrender.com/{TOKEN}"
-    await app.bot.set_webhook(webhook_url)
-    
-    print("Bot started...")
-    
-    while True:
-        await asyncio.sleep(1)
-
-async def run_webapp():
-    app = web.Application()
-    app.add_routes(routes)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-    print("Web app started...")
-
-def main():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    loop.create_task(run_bot())
-    loop.create_task(run_webapp())
-    
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
+    print("Bot starting...")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
+    )
 
 if __name__ == "__main__":
     main()
