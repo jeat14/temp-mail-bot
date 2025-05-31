@@ -1,4 +1,3 @@
-cat << 'EOF' > temp_mail_bot.py
 from telegram.ext import Application, CommandHandler
 import random
 import os
@@ -14,13 +13,14 @@ async def start(update, context):
     await update.message.reply_text("Commands: /gen /list /time /check")
 
 async def gen(update, context):
-    email = f"user{random.randint(1000,9999)}@{random.choice(DOMAINS)}"
+    email = "user" + str(random.randint(1000,9999)) + "@" + 
+random.choice(DOMAINS)
     if "emails" not in context.user_data:
         context.user_data["emails"] = []
     email_data = {"address": email, "expires": datetime.now() + 
 timedelta(minutes=EXPIRATION_MINUTES), "messages": []}
     context.user_data["emails"].append(email_data)
-    await update.message.reply_text(f"New email: {email}")
+    await update.message.reply_text("New email: " + email)
 
 async def list_mail(update, context):
     if "emails" not in context.user_data:
@@ -36,7 +36,8 @@ e["expires"] > now]
     for i, email in enumerate(active_emails, 1):
         remaining = email["expires"] - now
         minutes = int(remaining.total_seconds() / 60)
-        msg += f"\n{i}. {email['address']} ({minutes}m)"
+        msg += "\n" + str(i) + ". " + email["address"] + " (" + 
+str(minutes) + "m)"
     await update.message.reply_text(msg)
 
 async def time_command(update, context):
@@ -52,8 +53,7 @@ e["expires"] > now]
     email = active_emails[-1]
     remaining = email["expires"] - now
     minutes = int(remaining.total_seconds() / 60)
-    await update.message.reply_text(f"Email {email['address']}: {minutes}m 
-left")
+    await update.message.reply_text("Time left: " + str(minutes) + "m")
 
 async def check_messages(update, context):
     if "emails" not in context.user_data:
@@ -67,18 +67,19 @@ e["expires"] > now]
         return
     email = active_emails[-1]
     if random.random() < 0.3:
-        new_message = {"from": 
-f"user{random.randint(1000,9999)}@example.com", "time": 
-datetime.now().strftime("%H:%M:%S")}
+        new_message = {
+            "from": "user" + str(random.randint(1000,9999)) + 
+"@example.com",
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
         email["messages"].append(new_message)
     if not email["messages"]:
-        await update.message.reply_text(f"No messages for 
-{email['address']}")
+        await update.message.reply_text("No messages")
     else:
-        msg = f"Messages for {email['address']}:"
+        msg = "Messages:"
         for i, message in enumerate(email["messages"], 1):
-            msg += f"\n{i}. From: {message['from']} Time: 
-{message['time']}"
+            msg += "\n" + str(i) + ". From: " + message["from"] + " Time: 
+" + message["time"]
         await update.message.reply_text(msg)
 
 def main():
@@ -94,5 +95,4 @@ webhook_url="https://temp-mail-bot-j4bi.onrender.com")
 
 if __name__ == "__main__":
     main()
-EOF
 
