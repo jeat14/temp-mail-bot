@@ -12,6 +12,7 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
+# Web routes for handling all HTTP methods
 routes = web.RouteTableDef()
 
 @routes.get('/')
@@ -20,6 +21,26 @@ async def handle_root(request):
 
 @routes.post('/')
 async def handle_post(request):
+    return web.Response(text="OK", status=200)
+
+@routes.put('/')
+async def handle_put(request):
+    return web.Response(text="OK", status=200)
+
+@routes.delete('/')
+async def handle_delete(request):
+    return web.Response(text="OK", status=200)
+
+@routes.patch('/')
+async def handle_patch(request):
+    return web.Response(text="OK", status=200)
+
+@routes.options('/')
+async def handle_options(request):
+    return web.Response(text="OK", status=200)
+
+@routes.head('/')
+async def handle_head(request):
     return web.Response(text="OK", status=200)
 
 def generate_random_string(length=10):
@@ -119,6 +140,7 @@ async def check_time(update, context):
     await update.message.reply_text(msg)
 
 def main():
+    # Create bot application
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -127,12 +149,12 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
+    # Create web application with all routes
+    web_app = web.Application()
+    web_app.add_routes(routes)
+    
     print("Starting...")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
-    )
+    web.run_app(web_app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     main()
