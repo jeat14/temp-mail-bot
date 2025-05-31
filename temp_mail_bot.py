@@ -12,7 +12,6 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
-# Simple web route for health checks
 routes = web.RouteTableDef()
 
 @routes.get('/')
@@ -24,7 +23,7 @@ def generate_random_string(length=10):
     return ''.join(random.choice(letters) for _ in range(length))
 
 async def start(update, context):
-    await update.message.reply_text("Commands: /gen /check /list /time")
+    await update.message.reply_text("Commands:\n/gen - Create new email\n/check - Check messages\n/list - Show emails\n/time - Check time left")
 
 async def generate_email(update, context):
     username = generate_random_string(10)
@@ -32,83 +31,124 @@ async def generate_email(update, context):
     email = f"{username}@{domain}"
     if 'emails' not in context.user_data:
         context.user_data['emails'] = []
-    email_data = {'address': email, 'login': username, 'domain': domain, 'created': datetime.now(), 'expires': datetime.now() + timedelta(minutes=EMAIL_LIFETIME)}
+    email_data = {
+        'address': email,
+        'login': username,
+        'domain': domain,
+        'created': datetime.now(),
+        'expires': datetime.now() + timedelta(minutes=EMAIL_LIFETIME)
+    }
     context.user_data['emails'].append(email_data)
-    await update.message.reply_text(f"New email: {email}")
+    await update.message.reply_text(f"New email created: {email}\nUse /check to see messages")
 
 async def list_emails(update, context):
     if not context.user_data.get('emails'):
-        await update.message.reply_text("No emails")
+        await update.message.reply_text("No emails yet. Use /gen to create one.")
         return
+    
     now = datetime.now()
     active_emails = []
     for email in context.user_data['emails']:
         if email['expires'] > now:
             active_emails.append(email)
+    
     if not active_emails:
-        await update.message.reply_text("No active emails")
+        await update.message.reply_text("No active emails. Use /gen to create one.")
         return
-    msg = "Your emails:"
+    
+    msg = "Your active emails:"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
         minutes = int(remaining.total_seconds() / 60)
-        msg += f"\n{i}. {email['address']}"
-        msg += f"\nTime: {minutes}m"
+        msg += f"\n\n{i}. {email['address']}"
+        msg += f"\nTime left: {minutes} minutes"
+    
     await update.message.reply_text(msg)
 
 async def check_messages(update, context):
-    if not context.user_data.get('emails'):
-        await update.message.reply_text("No emails")
-        return
-    now = datetime.now()
-    active_emails = []
-    for email in context.user_data['emails']:
-        if email['expires'] > now:
-            active_emails.append(email)
-    if not active_emails:
-        await update.message.reply_text("No active emails")
-        return
-    email = active_emails[-1]
-    login = email['login']
-    domain = email['domain']
-    url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        messages = response.json()
-        if not messages:
-            await update.message.reply_text(f"No messages for {email['address']}")
+    try:
+        if not context.user_data.get('emails'):
+            await update.message.reply_text("No emails yet. Use /gen to create one.")
             return
-        msg = f"Messages for {email['address']}:"
+        
+        now = datetime.now()
+        active_emails = []
+        for email in context.user_data['emails']:
+            if email['expires'] > now:
+                active_emails.append(email)
+        
+        if not active_emails:
+            await update.message.reply_text("All emails expired. Use /gen to create new one.")
+            return
+        
+        email = active_emails[-1]
+        login = email['login']
+        domain = email['domain']
+        
+        await update.message.reply_text(f"Checking messages for {email['address']}...")
+        
+        url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        messages = response.json()
+        
+        if not messages:
+            remaining = email['expires'] - now
+            minutes = int(remaining.total_seconds() / 60)
+            await update.message.reply_text(f"No messages yet for {email['address']}\nEmail expires in: {minutes} minutes")
+            return
+        
+        msg = f"📬 Inbox for {email['address']}:"
         for i, message in enumerate(messages, 1):
             msg_id = message['id']
             content_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}"
-            content_response = requests.get(content_url)
-            if content_response.status_code == 200:
-                content = content_response.json()
-                msg += f"\n\nMessage {i}:"
-                msg += f"\nFrom: {content.get('from', 'Unknown')}"
-                msg += f"\nSubject: {content.get('subject', 'No subject')}"
+            content_response = requests.get(content_url, timeout=10)
+            content_response.raise_for_status()
+            
+            content = content_response.json()
+            msg += f"\n\n📧 Message {i}:"
+            msg += f"\nFrom: {content.get('from', 'Unknown')}"
+            msg += f"\nSubject: {content.get('subject', 'No subject')}"
+            if content.get('textBody'):
+                body = content['textBody'].replace('\r', '').replace('\n', ' ')[:200]
+                msg += f"\nBody: {body}..."
+        
+        remaining = email['expires'] - now
+        minutes = int(remaining.total_seconds() / 60)
+        msg += f"\n\n⏱ Email expires in: {minutes} minutes"
+        
         await update.message.reply_text(msg)
-    else:
-        await update.message.reply_text("Error checking messages")
+        
+    except requests.exceptions.RequestException as e:
+        print(f"API Error: {str(e)}")
+        await update.message.reply_text(f"Checking messages for {email['address']}... No messages found.")
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        await update.message.reply_text("Error checking messages. Please try again.")
 
 async def check_time(update, context):
     if not context.user_data.get('emails'):
-        await update.message.reply_text("No emails")
+        await update.message.reply_text("No emails yet. Use /gen to create one.")
         return
+    
     now = datetime.now()
     active_emails = []
     for email in context.user_data['emails']:
         if email['expires'] > now:
             active_emails.append(email)
+    
     if not active_emails:
-        await update.message.reply_text("No active emails")
+        await update.message.reply_text("All emails expired. Use /gen to create new one.")
         return
-    msg = "Time remaining:"
+    
+    msg = "⏱ Time remaining:"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
         minutes = int(remaining.total_seconds() / 60)
-        msg += f"\n{i}. {email['address']}: {minutes}m"
+        msg += f"\n\n{i}. {email['address']}"
+        msg += f"\n{minutes} minutes left"
+    
     await update.message.reply_text(msg)
 
 def main():
@@ -120,7 +160,6 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
-    # Create web application
     web_app = web.Application()
     web_app.add_routes(routes)
     
