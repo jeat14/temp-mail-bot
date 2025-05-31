@@ -12,7 +12,7 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
-# Web routes for handling all HTTP methods
+# Web routes for handling HTTP methods
 routes = web.RouteTableDef()
 
 @routes.get('/')
@@ -39,9 +39,7 @@ async def handle_patch(request):
 async def handle_options(request):
     return web.Response(text="OK", status=200)
 
-@routes.head('/')
-async def handle_head(request):
-    return web.Response(text="OK", status=200)
+# Removed HEAD method as it's automatically handled by aiohttp
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
