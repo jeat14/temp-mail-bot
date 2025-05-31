@@ -3,11 +3,11 @@ import random
 import os
 import string
 from datetime import datetime
+import aiohttp
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
-# Available domains for temp mail
 DOMAINS = [
     "1secmail.com",
     "1secmail.org",
@@ -23,7 +23,6 @@ async def start(update, context):
 
 async def generate_email(update, context):
     try:
-        # Generate random username and select random domain
         username = generate_random_string(10)
         domain = random.choice(DOMAINS)
         email = f"{username}@{domain}"
@@ -72,40 +71,44 @@ async def check_messages(update, context):
         return
     
     email = context.user_data['emails'][-1]
+    login = email['login']
+    domain = email['domain']
     
     try:
-        import aiohttp
         async with aiohttp.ClientSession() as session:
-            url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={email['login']}&domain={email['domain']}"
-            async with session.get(url) as response:
-                if response.status == 200:
-                    messages = await response.json()
+            # First, get the list of messages
+            messages_url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
+            async with session.get(messages_url) as response:
+                messages = await response.json()
+                
+                if not messages:
+                    await update.message.reply_text(f"📭 No messages yet for {email['address']}")
+                    return
+                
+                # If we have messages, get the content of each
+                msg = f"📬 Inbox for {email['address']}:\n\n"
+                for i, message in enumerate(messages, 1):
+                    message_id = message['id']
+                    content_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={message_id}"
                     
-                    if not messages:
-                        await update.message.reply_text(f"📭 No messages yet for {email['address']}")
-                        return
-                    
-                    msg = f"📬 Inbox for {email['address']}:\n\n"
-                    for i, message in enumerate(messages, 1):
-                        # Get full message content
-                        msg_url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={email['login']}&domain={email['domain']}&id={message['id']}"
-                        async with session.get(msg_url) as msg_response:
-                            if msg_response.status == 200:
-                                full_msg = await msg_response.json()
-                                msg += f"📧 Message {i}:\n"
-                                msg += f"From: {message.get('from', 'Unknown')}\n"
-                                msg += f"Subject: {message.get('subject', 'No subject')}\n"
-                                msg += f"Date: {message.get('date', 'Unknown')}\n"
-                                if 'textBody' in full_msg:
-                                    msg += f"Body: {full_msg['textBody'][:200]}...\n\n"
-                    
-                    await update.message.reply_text(msg)
-                else:
-                    await update.message.reply_text("Failed to fetch messages. Try again.")
-                    
+                    async with session.get(content_url) as content_response:
+                        content = await content_response.json()
+                        
+                        msg += f"📧 Message {i}:\n"
+                        msg += f"From: {content.get('from')}\n"
+                        msg += f"Subject: {content.get('subject')}\n"
+                        msg += f"Date: {content.get('date')}\n"
+                        if content.get('textBody'):
+                            body = content['textBody']
+                            # Limit body length and remove any problematic characters
+                            body = body.replace('\r', '').replace('\n', ' ')[:200]
+                            msg += f"Body: {body}...\n\n"
+                
+                await update.message.reply_text(msg)
+                
     except Exception as e:
-        print(f"Debug - Error: {str(e)}")
-        await update.message.reply_text(f"📭 Checking messages for {email['address']}... No messages yet.")
+        print(f"Debug error: {str(e)}")
+        await update.message.reply_text("Error checking messages. Please try again.")
 
 def main():
     app = Application.builder().token(TOKEN).build()
