@@ -14,8 +14,8 @@ async def gen(update, context):
     email = "user" + str(num) + "@tempmail.com"
     if "emails" not in context.user_data:
         context.user_data["emails"] = []
-    email_data = {"address": email, "expires": datetime.now() + timedelta(minutes=10), "messages": []}
-    context.user_data["emails"].append(email_data)
+    data = {"address": email, "expires": datetime.now() + timedelta(minutes=10), "messages": []}
+    context.user_data["emails"].append(data)
     await update.message.reply_text("New email: " + email)
 
 async def list_mail(update, context):
@@ -30,11 +30,10 @@ async def list_mail(update, context):
     if not active:
         await update.message.reply_text("No active emails")
         return
-    msg = "Your emails:"
+    text = "Your emails:"
     for i in range(len(active)):
-        msg = msg + "
-" + str(i+1) + ". " + active[i]["address"]
-    await update.message.reply_text(msg)
+        text = text + " " + active[i]["address"]
+    await update.message.reply_text(text)
 
 async def time_command(update, context):
     if "emails" not in context.user_data:
@@ -51,7 +50,7 @@ async def time_command(update, context):
     email = active[-1]
     remaining = email["expires"] - now
     minutes = int(remaining.total_seconds() / 60)
-    await update.message.reply_text("Minutes left: " + str(minutes))
+    await update.message.reply_text("Minutes: " + str(minutes))
 
 async def check_messages(update, context):
     if "emails" not in context.user_data:
@@ -68,16 +67,15 @@ async def check_messages(update, context):
     email = active[-1]
     if random.random() < 0.3:
         num = random.randint(1000,9999)
-        msg = {"from": "user" + str(num) + "@example.com", "time": datetime.now().strftime("%H:%M:%S")}
+        msg = {"from": "user" + str(num) + "@example.com"}
         email["messages"].append(msg)
     if not email["messages"]:
         await update.message.reply_text("No messages")
     else:
-        txt = "Messages:"
-        for i in range(len(email["messages"])):
-            txt = txt + "
-" + str(i+1) + ". From: " + email["messages"][i]["from"]
-        await update.message.reply_text(txt)
+        text = "Messages:"
+        for m in email["messages"]:
+            text = text + " " + m["from"]
+        await update.message.reply_text(text)
 
 def main():
     app = Application.builder().token(TOKEN).build()
