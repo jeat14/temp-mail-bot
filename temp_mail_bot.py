@@ -3,10 +3,16 @@ import random
 import string
 from datetime import datetime
 import requests
+import os
+from aiohttp import web
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
+PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
+
+async def handle_webhook(request):
+    return web.Response(text="Bot is running")
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -96,6 +102,11 @@ async def check_messages(update, context):
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
 def main():
+    # Create web app
+    web_app = web.Application()
+    web_app.router.add_get('/', handle_webhook)
+    
+    # Create bot app
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -104,7 +115,9 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     
     print("Bot starting...")
-    app.run_polling(poll_interval=1)
+    
+    # Run both web app and bot
+    web.run_app(web_app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     main()
