@@ -9,45 +9,16 @@ TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
-EMAIL_LIFETIME_DAYS = 2
+EMAIL_LIFETIME = 10  # 10 minutes
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
 
 async def start(update, context):
-    welcome_msg = """
-🤖 *Welcome to TempMail Bot!*
-
-📧 *Available Commands:*
-/cmds - Show all commands
-/gen - Generate new temporary email
-/list - Show your active emails
-/check - Check messages
-/time - Check remaining time
-
-ℹ️ *How to use:*
-1. Use /gen to create a new email
-2. Send emails to your temporary address
-3. Use /check to see received messages
-4. Email expires in 2 days
-"""
-    await update.message.reply_text(welcome_msg, parse_mode='Markdown')
-
-async def cmds(update, context):
-    commands = """
-📋 *Available Commands:*
-
-/start - Start the bot
-/cmds - Show this message
-/gen - Generate new email
-/list - Show active emails
-/check - Check messages
-/time - Check remaining time
-
-⏰ Emails last for 2 days
-"""
-    await update.message.reply_text(commands, parse_mode='Markdown')
+    await update.message.reply_text("Welcome! Use these commands:\n/gen - 
+New email\n/check - Check messages\n/list - Show emails\n/time - Check 
+time left")
 
 async def generate_email(update, context):
     try:
@@ -63,33 +34,22 @@ async def generate_email(update, context):
             'login': username,
             'domain': domain,
             'created': datetime.now(),
-            'expires': datetime.now() + 
-timedelta(days=EMAIL_LIFETIME_DAYS)
+            'expires': datetime.now() + timedelta(minutes=EMAIL_LIFETIME)
         }
         
         context.user_data['emails'].append(email_data)
-        
-        response = f"""
-✨ *New email created!*
-
-📧 Email: `{email}`
-⏱ Expires in: {EMAIL_LIFETIME_DAYS} days
-
-Use /check to see messages
-Use /time to check expiration
-"""
-        await update.message.reply_text(response, parse_mode='Markdown')
+        await update.message.reply_text(f"New email: {email}\nExpires in: 
+{EMAIL_LIFETIME} minutes")
         
     except Exception as e:
         print(f"Debug - Error: {str(e)}")
-        await update.message.reply_text("❌ Error generating email. Please 
-try again.")
+        await update.message.reply_text("Error generating email")
 
 async def list_emails(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("📭 No emails yet. Use /gen to 
-create one.")
+        await update.message.reply_text("No emails yet. Use /gen to create 
+one.")
         return
     
     now = datetime.now()
@@ -97,25 +57,25 @@ create one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 No active emails. Use /gen to 
+        await update.message.reply_text("No active emails. Use /gen to 
 create one.")
         return
     
-    msg = "📧 *Your active emails:*\n"
+    msg = "Your active emails:\n"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
-        days = remaining.days
-        hours = int(remaining.seconds / 3600)
-        msg += f"\n{i}. `{email['address']}`"
-        msg += f"\n⏱ Expires in: {days}d {hours}h\n"
+        minutes = int(remaining.total_seconds() / 60)
+        seconds = int(remaining.total_seconds() % 60)
+        msg += f"\n{i}. {email['address']}"
+        msg += f"\nTime left: {minutes}m {seconds}s\n"
     
-    await update.message.reply_text(msg, parse_mode='Markdown')
+    await update.message.reply_text(msg)
 
 async def check_messages(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("📭 No emails yet. Use /gen to 
-create one.")
+        await update.message.reply_text("No emails yet. Use /gen to create 
+one.")
         return
     
     now = datetime.now()
@@ -123,8 +83,8 @@ create one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 All emails expired. Use /gen 
-to create new one.")
+        await update.message.reply_text("All emails expired. Use /gen to 
+create new one.")
         return
     
     email = active_emails[-1]
@@ -141,15 +101,14 @@ f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={doma
             
             if not messages:
                 remaining = email['expires'] - now
-                days = remaining.days
-                hours = int(remaining.seconds / 3600)
-                msg = f"📭 No messages for `{email['address']}`\n"
-                msg += f"⏱ Email expires in: {days}d {hours}h"
-                await update.message.reply_text(msg, 
-parse_mode='Markdown')
+                minutes = int(remaining.total_seconds() / 60)
+                seconds = int(remaining.total_seconds() % 60)
+                msg = f"No messages for {email['address']}\n"
+                msg += f"Time left: {minutes}m {seconds}s"
+                await update.message.reply_text(msg)
                 return
             
-            msg = f"📬 *Inbox for:* `{email['address']}`\n"
+            msg = f"Inbox for {email['address']}:\n"
             for i, message in enumerate(messages, 1):
                 msg_id = message['id']
                 content_url = 
@@ -158,8 +117,8 @@ f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={doma
                 
                 if content_response.status_code == 200:
                     content = content_response.json()
-                    msg += f"\n📧 *Message {i}:*"
-                    msg += f"\nFrom: `{content.get('from', 'Unknown')}`"
+                    msg += f"\nMessage {i}:"
+                    msg += f"\nFrom: {content.get('from', 'Unknown')}"
                     msg += f"\nSubject: {content.get('subject', 'No 
 subject')}"
                     msg += f"\nDate: {content.get('date', 'Unknown')}"
@@ -169,26 +128,19 @@ subject')}"
                         msg += f"\nBody: {body}..."
                     msg += "\n"
             
-            remaining = email['expires'] - now
-            days = remaining.days
-            hours = int(remaining.seconds / 3600)
-            msg += f"\n⏱ Email expires in: {days}d {hours}h"
-            
-            await update.message.reply_text(msg, parse_mode='Markdown')
+            await update.message.reply_text(msg)
         else:
-            await update.message.reply_text("❌ Error checking messages. 
-Please try again.")
+            await update.message.reply_text("Error checking messages")
             
     except Exception as e:
         print(f"Debug error: {str(e)}")
-        await update.message.reply_text("❌ Error checking messages. 
-Please try again.")
+        await update.message.reply_text("Error checking messages")
 
 async def check_time(update, context):
     if 'emails' not in context.user_data or not 
 context.user_data['emails']:
-        await update.message.reply_text("📭 No emails yet. Use /gen to 
-create one.")
+        await update.message.reply_text("No emails yet. Use /gen to create 
+one.")
         return
     
     now = datetime.now()
@@ -196,25 +148,24 @@ create one.")
 e['expires'] > now]
     
     if not active_emails:
-        await update.message.reply_text("📭 All emails expired. Use /gen 
-to create new one.")
+        await update.message.reply_text("All emails expired. Use /gen to 
+create new one.")
         return
     
-    msg = "⏱ *Email Expiration Times:*\n"
+    msg = "Time remaining:\n"
     for i, email in enumerate(active_emails, 1):
         remaining = email['expires'] - now
-        days = remaining.days
-        hours = int(remaining.seconds / 3600)
-        msg += f"\n{i}. `{email['address']}`"
-        msg += f"\nExpires in: {days}d {hours}h\n"
+        minutes = int(remaining.total_seconds() / 60)
+        seconds = int(remaining.total_seconds() % 60)
+        msg += f"\n{i}. {email['address']}"
+        msg += f"\nTime left: {minutes}m {seconds}s\n"
     
-    await update.message.reply_text(msg, parse_mode='Markdown')
+    await update.message.reply_text(msg)
 
 def main():
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("cmds", cmds))
     app.add_handler(CommandHandler("gen", generate_email))
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
