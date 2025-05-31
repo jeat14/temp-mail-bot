@@ -98,7 +98,7 @@ async def check_messages(update, context):
         print(f"Debug error: {str(e)}")
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
-async def web_handler(request):
+async def web_app(request):
     return web.Response(text="Temp Mail Bot is running!")
 
 def main():
@@ -109,15 +109,11 @@ def main():
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    web_app = web.Application()
-    web_app.router.add_get('/', web_handler)
-    
     print("Bot starting...")
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
-        webhook_url="https://temp-mail-bot-j4bi.onrender.com",
-        webhook_app=web_app
+        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
     )
 
 if __name__ == "__main__":
