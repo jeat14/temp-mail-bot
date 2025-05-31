@@ -12,7 +12,6 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
-# Create routes
 routes = web.RouteTableDef()
 
 @routes.get('/')
@@ -21,8 +20,11 @@ async def handle_root(request):
 
 @routes.post('/' + TOKEN)
 async def handle_webhook(request):
-    data = await request.json()
-    await app.process_update(data)
+    try:
+        data = await request.json()
+        await app.process_update(data)
+    except Exception as e:
+        print(f"Error: {e}")
     return web.Response(status=200)
 
 def generate_random_string(length=10):
@@ -126,7 +128,6 @@ def main():
     app.add_handler(CommandHandler("check", check_messages))
     app.add_handler(CommandHandler("time", check_time))
     
-    # Create web app
     web_app = web.Application()
     web_app.add_routes(routes)
     
