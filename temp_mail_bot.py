@@ -4,6 +4,7 @@ import os
 import string
 from datetime import datetime
 import requests
+import asyncio
 from aiohttp import web
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
@@ -11,16 +12,12 @@ PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 
-# Web routes
+# Create web app
 routes = web.RouteTableDef()
 
 @routes.get('/')
-async def handle_root(request):
-    return web.Response(text="Temp Mail Bot is running!")
-
-@routes.post('/' + TOKEN)
-async def handle_webhook(request):
-    return web.Response(status=200)
+async def health_check(request):
+    return web.Response(text="Bot is alive!", status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -109,31 +106,37 @@ async def check_messages(update, context):
         print(f"Debug error: {str(e)}")
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
-async def on_startup(app):
-    print("Bot starting...")
-    # Set webhook
-    webhook_url = "https://temp-mail-bot-j4bi.onrender.com/" + TOKEN
-    await app.bot.set_webhook(webhook_url)
-
-def main():
-    # Create web application
-    web_app = web.Application()
-    web_app.add_routes(routes)
-    
-    # Create bot application
+async def run_bot():
     app = Application.builder().token(TOKEN).build()
     
-    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gen", generate_email))
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    # Setup webhook
-    web_app.on_startup.append(lambda x: on_startup(app))
+    await app.initialize()
+    await app.start()
     
-    # Start web application
-    web.run_app(web_app, host="0.0.0.0", port=PORT)
+    print("Bot started...")
+    
+    # Keep the bot running
+    while True:
+        await asyncio.sleep(1)
+
+async def run_webapp():
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+    print("Web app started...")
+
+def main():
+    loop = asyncio.get_event_loop()
+    loop.create_task(run_bot())
+    loop.create_task(run_webapp())
+    loop.run_forever()
 
 if __name__ == "__main__":
     main()
