@@ -5,14 +5,19 @@ from datetime import datetime
 import requests
 import os
 from aiohttp import web
+import asyncio
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
 
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 
-async def handle_webhook(request):
-    return web.Response(text="Bot is running")
+# Create web routes for uptime monitoring
+routes = web.RouteTableDef()
+
+@routes.get('/')
+async def health_check(request):
+    return web.Response(text="Bot is running!", status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -101,12 +106,7 @@ async def check_messages(update, context):
         print(f"Debug error: {str(e)}")
         await update.message.reply_text(f"No messages yet for {email['address']}")
 
-def main():
-    # Create web app
-    web_app = web.Application()
-    web_app.router.add_get('/', handle_webhook)
-    
-    # Create bot app
+async def run_bot():
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -114,10 +114,35 @@ def main():
     app.add_handler(CommandHandler("list", list_emails))
     app.add_handler(CommandHandler("check", check_messages))
     
-    print("Bot starting...")
+    await app.initialize()
+    await app.start()
     
-    # Run both web app and bot
-    web.run_app(web_app, host="0.0.0.0", port=PORT)
+    print("Bot started...")
+    
+    # Keep the bot running
+    while True:
+        await asyncio.sleep(1)
+
+async def run_webapp():
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+    print("Web app started...")
+
+def main():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    loop.create_task(run_bot())
+    loop.create_task(run_webapp())
+    
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     main()
