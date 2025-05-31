@@ -1,12 +1,10 @@
 from telegram.ext import Application, CommandHandler
-from telegram import Update
 import random
 import string
 from datetime import datetime, timedelta
 import requests
 import os
 from aiohttp import web
-import json
 
 TOKEN = "7744035483:AAFYnyfwhN74kSveZBl7nXKjGgXKYWtnbw0"
 PORT = int(os.getenv("PORT", "8080"))
@@ -14,25 +12,12 @@ PORT = int(os.getenv("PORT", "8080"))
 DOMAINS = ["1secmail.com", "1secmail.org", "1secmail.net"]
 EMAIL_LIFETIME = 10
 
+# Simple web route for health checks
 routes = web.RouteTableDef()
 
 @routes.get('/')
 async def handle_root(request):
     return web.Response(text="Bot is running!")
-
-@routes.get('/health')
-async def handle_health(request):
-    return web.Response(text="OK")
-
-@routes.post('/' + TOKEN)
-async def handle_webhook(request):
-    try:
-        data = await request.json()
-        update = Update.de_json(data, application.bot)
-        await application.process_update(update)
-    except Exception as e:
-        print(f"Error processing update: {e}")
-    return web.Response(status=200)
 
 def generate_random_string(length=10):
     letters = string.ascii_lowercase + string.digits
@@ -127,22 +112,24 @@ async def check_time(update, context):
     await update.message.reply_text(msg)
 
 def main():
-    global application
-    application = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
     
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("gen", generate_email))
-    application.add_handler(CommandHandler("list", list_emails))
-    application.add_handler(CommandHandler("check", check_messages))
-    application.add_handler(CommandHandler("time", check_time))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("gen", generate_email))
+    app.add_handler(CommandHandler("list", list_emails))
+    app.add_handler(CommandHandler("check", check_messages))
+    app.add_handler(CommandHandler("time", check_time))
     
     # Create web application
     web_app = web.Application()
     web_app.add_routes(routes)
     
     print("Starting...")
-    web.run_app(web_app, host="0.0.0.0", port=PORT)
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://temp-mail-bot-j4bi.onrender.com"
+    )
 
 if __name__ == "__main__":
     main()
